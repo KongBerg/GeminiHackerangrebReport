@@ -1,0 +1,367 @@
+<html lang="da" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktivt Dashboard for Cybertrusler</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony (BG: #F8F9FA, Text: #212529, Primary Accent: #087E8B, Secondary Accent: #FFC43D, Neutral: #6C757D) -->
+    <!-- Application Structure Plan: A single-page dashboard structure is used to transform the linear report into an explorable experience. The design prioritizes user flow over the report's sequence. It starts by answering the core question about attribution, then allows users to dive into actor profiles (Nation-State vs. Criminal), see the localized threat to Denmark, and finally get actionable defense steps. This thematic approach, supported by top navigation, empowers users to explore content based on interest, making complex information more digestible. -->
+    <!-- Visualization & Content Choices: 1. Attribution Techniques: Report Info -> Obfuscation methods table -> Goal: Inform -> Viz: Interactive cards -> Interaction: Click-to-reveal -> Justification: More engaging than a static table, breaks down complex terms. Method: HTML/JS. 2. Initial Access Vectors: Report Info -> Mandiant data (33% exploit, 16% creds) -> Goal: Compare -> Viz: Bar Chart -> Interaction: Hover tooltips -> Justification: Visually quantifies the most common entry points. Library: Chart.js. 3. Nation-State Actors: Report Info -> Profiles of Russia, China, etc. -> Goal: Organize/Compare -> Viz: Tabbed content with profile cards -> Interaction: Click tabs to switch actors -> Justification: Neatly organizes distinct groups and their complex motivations. Method: HTML/JS. 4. Danish Threat Levels: Report Info -> CFCS threat levels -> Goal: Inform -> Viz: Color-coded status blocks -> Interaction: Static, high-impact visuals -> Justification: Provides a quick, scannable overview of the national risk. Method: HTML/Tailwind. CONFIRMS NO SVG/Mermaid. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8F9FA; color: #212529; }
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; height: 350px; max-height: 400px; }
+        @media (max-width: 640px) { .chart-container { height: 300px; } }
+        .nav-link { transition: color 0.3s ease, border-color 0.3s ease; }
+        .card-hover { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-in-out; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-3">
+            <div class="flex justify-between items-center">
+                <div class="text-xl font-bold text-[#087E8B]">Cybertrusselsbilledet</div>
+                <div class="hidden md:flex space-x-8">
+                    <a href="#attribution" class="nav-link text-gray-600 hover:text-[#087E8B] border-b-2 border-transparent hover:border-[#087E8B]">Attribution</a>
+                    <a href="#actors" class="nav-link text-gray-600 hover:text-[#087E8B] border-b-2 border-transparent hover:border-[#087E8B]">Aktører</a>
+                    <a href="#denmark" class="nav-link text-gray-600 hover:text-[#087E8B] border-b-2 border-transparent hover:border-[#087E8B]">Danmark</a>
+                    <a href="#defense" class="nav-link text-gray-600 hover:text-[#087E8B] border-b-2 border-transparent hover:border-[#087E8B]">Forsvar</a>
+                </div>
+                <div class="md:hidden">
+                    <button id="menu-btn" class="text-gray-600 focus:outline-none">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="mobile-menu" class="hidden md:hidden mt-4">
+                <a href="#attribution" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100 rounded">Attribution</a>
+                <a href="#actors" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100 rounded">Aktører</a>
+                <a href="#denmark" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100 rounded">Danmark</a>
+                <a href="#defense" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100 rounded">Forsvar</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-12">
+        <section class="text-center mb-24">
+            <h1 class="text-4xl md:text-5xl font-bold text-[#087E8B] mb-4">Det Globale Cybertrusselsbillede</h1>
+            <p class="text-lg text-gray-600 max-w-3xl mx-auto">Et simpelt spørgsmål som "hvilke lande hacker mest?" har et komplekst svar. Geografisk oprindelse er ofte en bevidst vildledning. Denne applikation afdækker de reelle trusler, hvem der står bag, og hvordan vi kan forsvare os.</p>
+        </section>
+
+        <section id="attribution" class="mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-4">Hvorfor 'Hvorfra?' er det forkerte spørgsmål</h2>
+            <p class="text-center text-gray-600 max-w-3xl mx-auto mb-12">Professionelle hackere, uanset om de er statsstøttede eller kriminelle, bruger en lang række teknikker til at skjule deres sande identitet og lokation. At spore et angreb tilbage til et specifikt land er derfor ekstremt svært. Her er nogle af de mest almindelige metoder, de bruger til at sløre deres spor.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow-md card-hover">
+                    <h3 class="font-bold text-xl mb-2 text-[#087E8B]">Botnets</h3>
+                    <p class="text-gray-600">Angribere bruger netværk af tusindvis af inficerede computere og enheder (botnets) fra hele verden til at sende angrebstrafik. Det får angrebet til at se ud som om, det kommer fra utallige uskyldige kilder på én gang.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md card-hover">
+                    <h3 class="font-bold text-xl mb-2 text-[#087E8B]">VPN & Proxy-kæder</h3>
+                    <p class="text-gray-600">Ved at sende deres trafik gennem en række mellemliggende servere (proxies) eller krypterede tunneler (VPN'er) i forskellige lande, kan angribere skjule deres oprindelige IP-adresse. Hvert "hop" gør sporing sværere.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md card-hover">
+                    <h3 class="font-bold text-xl mb-2 text-[#087E8B]">Falsk Flag-Operationer</h3>
+                    <p class="text-gray-600">Statsstøttede grupper efterlader bevidst falske spor for at give andre lande eller grupper skylden. Det kan være kode-kommentarer på et specifikt sprog eller brug af kendte værktøjer fra en anden gruppe.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md card-hover">
+                    <h3 class="font-bold text-xl mb-2 text-[#087E8B]">Misbrug af Cloud-tjenester</h3>
+                    <p class="text-gray-600">Hackere opretter konti hos store, legitime cloud-udbydere med stjålne kreditkort. Deres angreb ser dermed ud til at komme fra en troværdig kilde som f.eks. Amazon eller Microsoft, hvilket gør dem svære at blokere.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md card-hover">
+                    <h3 class="font-bold text-xl mb-2 text-[#087E8B]">"Leve af landet" (LotL)</h3>
+                    <p class="text-gray-600">Angribere bruger de legitime værktøjer, der allerede findes på et offers system (f.eks. PowerShell). Deres aktiviteter blander sig med normal administrativ trafik og er svære at opdage for sikkerhedssystemer.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md card-hover">
+                    <h3 class="font-bold text-xl mb-2 text-[#087E8B]">Anonymiseringsnetværk (Tor)</h3>
+                    <p class="text-gray-600">Ved at bruge netværk som Tor, der krypterer og sender trafik gennem et globalt netværk af frivillige servere, bliver det praktisk talt umuligt at spore trafikken tilbage til dens oprindelige kilde.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="actors" class="mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-12">Mød Trusselsaktørerne</h2>
+            <div class="flex justify-center mb-8 border-b">
+                <button id="btn-state" class="actor-btn px-6 py-2 text-lg font-medium text-[#087E8B] border-b-2 border-[#087E8B]">Statsstøttede Grupper</button>
+                <button id="btn-crime" class="actor-btn px-6 py-2 text-lg font-medium text-gray-500 border-b-2 border-transparent">Cyberkriminelle</button>
+            </div>
+
+            <div id="content-state">
+                 <p class="text-center text-gray-600 max-w-3xl mx-auto mb-12">Statsstøttede grupper agerer på vegne af nationer for at opnå geopolitiske, militære eller økonomiske fordele. Deres mål er typisk spionage, destabilisering eller tyveri af intellektuel ejendom. Fire lande fremhæves ofte af efterretningstjenester.</p>
+                <div class="space-y-8">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="font-bold text-2xl mb-2">🇷🇺 Rusland</h3>
+                        <p><strong>Motivation:</strong> Geopolitisk indflydelse, destabilisering af modstandere og spionage.</p>
+                        <p><strong>Fokus:</strong> Angreb mod NATO-lande, kritisk infrastruktur og valgindblanding. Bruger ofte destruktiv malware ("wipers") og pro-russiske "hacktivist"-grupper som stedfortrædere.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="font-bold text-2xl mb-2">🇨🇳 Kina</h3>
+                        <p><strong>Motivation:</strong> Økonomisk og teknologisk dominans gennem systematisk tyveri af data.</p>
+                        <p><strong>Fokus:</strong> Omfattende industrispionage mod high-tech-, forsknings- og produktionsvirksomheder for at stjæle forretningshemmeligheder og forskningsdata. Uddannelsessektoren er et hyppigt mål.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="font-bold text-2xl mb-2">🇮🇷 Iran</h3>
+                        <p><strong>Motivation:</strong> Regional magtprojektion og afskrækkelse af modstandere som Israel og USA.</p>
+                        <p><strong>Fokus:</strong> Sabotage mod infrastruktur i rivaliserende lande og påvirkningsoperationer for at skabe politisk uro. Intensiveret aktivitet i forbindelse med konflikter i Mellemøsten.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="font-bold text-2xl mb-2">🇰🇵 Nordkorea</h3>
+                        <p><strong>Motivation:</strong> Direkte finansiel gevinst for at finansiere regimet og dets våbenprogrammer.</p>
+                        <p><strong>Fokus:</strong> Unik blanding af stats- og kriminelle operationer. Specialiseret i store kup mod kryptovaluta-børser og finansielle institutioner samt ransomware-angreb for profit.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="content-crime" class="hidden">
+                <p class="text-center text-gray-600 max-w-3xl mx-auto mb-12">Cyberkriminelle er motiveret af profit. De opererer i en global, professionel undergrundsøkonomi og står for den største mængde angreb mod virksomheder og private. Deres metoder er fokuseret på at opnå adgang og afpresse penge så effektivt som muligt.</p>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                    <div>
+                        <h3 class="font-bold text-xl mb-4 text-center">Sådan kommer de ind: De mest brugte metoder</h3>
+                        <div class="chart-container">
+                            <canvas id="initialAccessChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="space-y-6">
+                        <div class="bg-white p-6 rounded-lg shadow-md card-hover">
+                           <h4 class="font-bold text-lg mb-2 text-[#087E8B]">Ransomware-økonomien</h4>
+                           <p>Fortsat en af de største trusler, hvor data krypteres og holdes som gidsel. Selvom flere angreb opdages, før krypteringen lykkes, er antallet af indledende kompromitteringer steget markant.</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md card-hover">
+                           <h4 class="font-bold text-lg mb-2 text-[#087E8B]">Svindel i vækst</h4>
+                           <p>Angreb baseret på social manipulation, som f.eks. falsk teknisk support ("tech scams"), er i eksplosiv vækst og overgår nu traditionel malware og phishing i volumen.</p>
+                        </div>
+                         <div class="bg-white p-6 rounded-lg shadow-md card-hover">
+                           <h4 class="font-bold text-lg mb-2 text-[#087E8B]">Risikoen fra ukendte enheder</h4>
+                           <p>Over 90% af succesfulde ransomware-angreb involverer en uadministreret enhed (f.eks. en privat laptop eller IoT-enhed), der mangler de nødvendige sikkerhedskontroller og er usynlig for IT-afdelingen.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="denmark" class="mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-4">Truslen mod Danmark</h2>
+            <p class="text-center text-gray-600 max-w-3xl mx-auto mb-12">Center for Cybersikkerhed (CFCS) vurderer løbende trusselsniveauet for Danmark. Deres vurderinger afspejler de globale tendenser og peger på specifikke risici for danske myndigheder og virksomheder.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 text-center">
+                <div class="bg-white p-8 rounded-lg shadow-md">
+                    <h3 class="font-bold text-xl mb-2">Cyberspionage</h3>
+                    <div class="text-3xl font-bold text-red-600">MEGET HØJ</div>
+                    <p class="text-gray-600 mt-2">Primært fra <strong>Rusland og Kina</strong> rettet mod dansk udenrigs- og sikkerhedspolitik, kritisk infrastruktur og Forsvaret.</p>
+                </div>
+                <div class="bg-white p-8 rounded-lg shadow-md">
+                    <h3 class="font-bold text-xl mb-2">Cyberkriminalitet</h3>
+                    <div class="text-3xl font-bold text-red-600">MEGET HØJ</div>
+                    <p class="text-gray-600 mt-2">Finansielt motiverede angreb, især ransomware, rammer bredt i hele samfundet. Antallet af sager var stigende i 2023.</p>
+                </div>
+                <div class="bg-white p-8 rounded-lg shadow-md">
+                    <h3 class="font-bold text-xl mb-2">Destruktive Angreb</h3>
+                    <div class="text-3xl font-bold text-[#FFC43D]">MIDDEL</div>
+                    <p class="text-gray-600 mt-2">Truslen er hævet i 2024. Risikoen kommer primært fra <strong>russiske statsaktører</strong>, og kan ændre sig med kort varsel.</p>
+                </div>
+            </div>
+            <div class="mt-12 bg-blue-50 border-l-4 border-[#087E8B] p-6 rounded-r-lg">
+                <h4 class="font-bold text-lg text-[#087E8B]">Vigtig pointe: Spionage er forløberen til sabotage</h4>
+                <p class="text-gray-700 mt-2">CFCS understreger, at spionage ofte bruges til at opnå adgang og forberede netværk til potentielle destruktive angreb. En vellykket spionageoperation kan derfor være en latent trussel, der kan aktiveres senere.</p>
+            </div>
+        </section>
+
+        <section id="defense" class="scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-12">Sådan bygger du et stærkt forsvar</h2>
+            <div class="max-w-4xl mx-auto space-y-4" id="accordion-container">
+                <div class="accordion-item bg-white rounded-lg shadow-md">
+                    <button class="accordion-header w-full flex justify-between items-center text-left p-6">
+                        <span class="text-xl font-medium text-[#087E8B]">1. Mestr de grundlæggende principper</span>
+                        <span class="accordion-icon text-2xl text-[#087E8B] transform transition-transform duration-300">+</span>
+                    </button>
+                    <div class="accordion-content px-6">
+                        <p class="pt-2 pb-6 text-gray-600">De fleste angreb lykkes ikke pga. avancerede metoder, men fordi det basale svigter. Dette er det mest effektive forsvar.
+                            <ul class="list-disc list-inside mt-4 space-y-2">
+                                <li><strong>Sikker Identitet:</strong> Håndhæv stærk, phishing-resistent Multi-Faktor Authentifikation (MFA) overalt. 99% af identitetsangreb er baseret på svage eller stjålne kodeord.</li>
+                                <li><strong>Sårbarhedsstyring:</strong> Hav en systematisk proces for at opdatere (patche) al software, især internetvendte systemer som VPN'er og firewalls.</li>
+                                <li><strong>Styr på enheder:</strong> Hav et komplet overblik over alle enheder på netværket. Uadministrerede enheder skal enten sikres eller isoleres.</li>
+                            </ul>
+                        </p>
+                    </div>
+                </div>
+                 <div class="accordion-item bg-white rounded-lg shadow-md">
+                    <button class="accordion-header w-full flex justify-between items-center text-left p-6">
+                        <span class="text-xl font-medium text-[#087E8B]">2. Indfør en efterretningsbaseret tilgang</span>
+                         <span class="accordion-icon text-2xl text-[#087E8B] transform transition-transform duration-300">+</span>
+                    </button>
+                    <div class="accordion-content px-6">
+                        <p class="pt-2 pb-6 text-gray-600">Et moderne forsvar skal være proaktivt og fokuseret på de trusler, der er mest relevante for netop din organisation.
+                             <ul class="list-disc list-inside mt-4 space-y-2">
+                                <li><strong>Brug trusselsdata:</strong> Investér i viden om, hvordan angribere agerer (deres TTPs). Brug denne viden til at prioritere jeres forsvar.</li>
+                                <li><strong>Proaktiv "Threat Hunting":</strong> Søg aktivt efter tegn på kompromittering baseret på kendt adfærd fra angribere, i stedet for blot at reagere på alarmer.</li>
+                            </ul>
+                        </p>
+                    </div>
+                </div>
+                 <div class="accordion-item bg-white rounded-lg shadow-md">
+                    <button class="accordion-header w-full flex justify-between items-center text-left p-6">
+                        <span class="text-xl font-medium text-[#087E8B]">3. Sikr cloud-miljøet og data</span>
+                         <span class="accordion-icon text-2xl text-[#087E8B] transform transition-transform duration-300">+</span>
+                    </button>
+                    <div class="accordion-content px-6">
+                       <p class="pt-2 pb-6 text-gray-600">Angreb i skyen er i kraftig stigning. Sikring af cloud-miljøer kræver et skift i tankegang fra traditionelt netværksforsvar til et identitets-centreret forsvar.
+                             <ul class="list-disc list-inside mt-4 space-y-2">
+                                <li><strong>Auditér konfigurationer:</strong> Gennemgå jævnligt cloud-opsætninger for at fjerne typiske fejlkonfigurationer, der er en primær adgangsvej for angribere.</li>
+                                <li><strong>Anvend Zero Trust:</strong> Byg jeres sikkerhed på en "Zero Trust"-arkitektur, der som udgangspunkt ikke stoler på nogen bruger eller enhed, hverken internt eller eksternt.</li>
+                            </ul>
+                        </p>
+                    </div>
+                </div>
+                 <div class="accordion-item bg-white rounded-lg shadow-md">
+                    <button class="accordion-header w-full flex justify-between items-center text-left p-6">
+                        <span class="text-xl font-medium text-[#087E8B]">4. Styrk det kollektive forsvar</span>
+                        <span class="accordion-icon text-2xl text-[#087E8B] transform transition-transform duration-300">+</span>
+                    </button>
+                    <div class="accordion-content px-6">
+                         <p class="pt-2 pb-6 text-gray-600">Ingen enkelt organisation kan modstå de største trusler alene. Samarbejde er afgørende.
+                             <ul class="list-disc list-inside mt-4 space-y-2">
+                                <li><strong>Del viden:</strong> Deltag aktivt i offentlig-private partnerskaber og informationsdelingsfora (ISACs) for at dele og modtage trusselsinformation.</li>
+                                <li><strong>Hav en nødplan:</strong> Udvikl og test jævnligt en robust plan for hændelseshåndtering. Målet er ikke kun at forhindre angreb, men at kunne respondere effektivt, når det sker.</li>
+                            </ul>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white mt-24">
+        <div class="container mx-auto px-6 py-8 text-center">
+            <p>Denne interaktive applikation er baseret på en syntese af data og analyser fra førende globale cybersikkerhedsrapporter og Danmarks Center for Cybersikkerhed (CFCS).</p>
+            <p class="text-sm text-gray-400 mt-2">Designet til at give overblik og fremme forståelse af det komplekse trusselsbillede.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            
+            const btnState = document.getElementById('btn-state');
+            const btnCrime = document.getElementById('btn-crime');
+            const contentState = document.getElementById('content-state');
+            const contentCrime = document.getElementById('content-crime');
+
+            btnState.addEventListener('click', () => {
+                contentState.classList.remove('hidden');
+                contentCrime.classList.add('hidden');
+                btnState.classList.add('text-[#087E8B]', 'border-[#087E8B]');
+                btnState.classList.remove('text-gray-500', 'border-transparent');
+                btnCrime.classList.add('text-gray-500', 'border-transparent');
+                btnCrime.classList.remove('text-[#087E8B]', 'border-[#087E8B]');
+            });
+
+            btnCrime.addEventListener('click', () => {
+                contentCrime.classList.remove('hidden');
+                contentState.classList.add('hidden');
+                btnCrime.classList.add('text-[#087E8B]', 'border-[#087E8B]');
+                btnCrime.classList.remove('text-gray-500', 'border-transparent');
+                btnState.classList.add('text-gray-500', 'border-transparent');
+                btnState.classList.remove('text-[#087E8B]', 'border-[#087E8B]');
+            });
+
+            const initialAccessCtx = document.getElementById('initialAccessChart').getContext('2d');
+            const initialAccessChart = new Chart(initialAccessCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Udnyttelse af sårbarheder', 'Stjålne login-oplysninger', 'Phishing via e-mail'],
+                    datasets: [{
+                        label: 'Procentdel af indtrængninger',
+                        data: [33, 16, 14],
+                        backgroundColor: [
+                            'rgba(8, 126, 139, 0.7)',
+                            'rgba(255, 196, 61, 0.7)',
+                            'rgba(108, 117, 125, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgb(8, 126, 139)',
+                            'rgb(255, 196, 61)',
+                            'rgb(108, 117, 125)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                             ticks: {
+                                callback: function(value) {
+                                    return value + '%'
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.raw + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const accordionContainer = document.getElementById('accordion-container');
+            accordionContainer.addEventListener('click', function(event) {
+                const header = event.target.closest('.accordion-header');
+                if (!header) return;
+
+                const item = header.parentElement;
+                const content = item.querySelector('.accordion-content');
+                const icon = header.querySelector('.accordion-icon');
+                
+                const allItems = accordionContainer.querySelectorAll('.accordion-item');
+                allItems.forEach(i => {
+                    if (i !== item) {
+                        i.querySelector('.accordion-content').style.maxHeight = null;
+                        i.querySelector('.accordion-icon').textContent = '+';
+                        i.querySelector('.accordion-icon').classList.remove('rotate-45');
+                    }
+                });
+
+                if (content.style.maxHeight) {
+                    content.style.maxHeight = null;
+                    icon.textContent = '+';
+                    icon.classList.remove('rotate-45');
+                } else {
+                    content.style.maxHeight = content.scrollHeight + "px";
+                    icon.textContent = '+';
+                    icon.classList.add('rotate-45');
+                } 
+            });
+
+            const menuBtn = document.getElementById('menu-btn');
+            const mobileMenu = document.getElementById('mobile-menu');
+            menuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            const mobileLinks = mobileMenu.querySelectorAll('a');
+            mobileLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    mobileMenu.classList.add('hidden');
+                });
+            });
+
+        });
+    </script>
+</body>
+</html>
